@@ -78,8 +78,8 @@ async function verifyOTP() {
             loginScreen.style.display = "none";
             mainContent.style.display = "block";
             fetchData();
-        } else alert("Invalid OTP (Test: 123456)");
-    } catch (e) { alert("Error verifying OTP"); }
+        } else alert("गलत OTP! कृपया ईमेल पर आया हुआ सही कोड डालें।");
+    } catch (e) { alert("Error verifying OTP. Please try again."); }
     finally { hideLoader(); }
 }
 
@@ -122,8 +122,13 @@ function renderTable() {
     container.innerHTML = "";
     
     if (data.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:3rem; color:#888; background:white; border-radius:1rem;">
-            No records found for <b>${currentUserEmail}</b>
+        container.innerHTML = `<div style="text-align:center; padding:3rem; color:#1e293b; background:white; border-radius:1.5rem; border: 1px solid #e2e8f0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+            <h3 style="margin-bottom: 1rem; color: #ef4444;">ID NOT FOUND</h3>
+            <p style="font-size: 1.1rem; line-height: 1.6;">
+                Census Cell से अपनी ईमेल आईडी सही करवाएं।<br>
+                <b>9928354317</b> पर अपना <b>नाम, पद, मोबाइल नंबर और ईमेल आईडी</b> भेजें।
+            </p>
         </div>`;
         return;
     }
