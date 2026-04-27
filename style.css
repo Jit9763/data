@@ -95,11 +95,20 @@ header {
 
 .card-header {
     background: #f8fafc;
-    padding: 1rem 2rem;
+    padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
+}
+
+@media (max-width: 600px) {
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .btn-edit { width: 100%; text-align: center; }
 }
 
 .card-header h3 {
@@ -107,8 +116,7 @@ header {
     color: var(--primary);
     font-weight: 700;
     word-break: break-all;
-    margin-right: 10px;
-    line-height: 1.2;
+    line-height: 1.3;
 }
 
 .card-body {
