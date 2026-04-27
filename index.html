@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Census Data Portal</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div id="loader" class="loader-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Connecting to Sheets...</p>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-overlay" style="display: flex;">
+        <div class="login-box">
+            <h1>Census 2027</h1>
+            <p>Enter your registered email to receive OTP</p>
+            
+            <div id="email-step">
+                <input type="email" id="login-email" placeholder="email@example.com" required>
+                <button id="send-otp-btn" class="btn-primary">Send OTP</button>
+            </div>
+
+            <div id="otp-step" style="display: none;">
+                <p>OTP sent to <b id="display-email"></b></p>
+                <input type="text" id="login-otp" placeholder="Enter 6-digit OTP" maxlength="6">
+                <button id="verify-otp-btn" class="btn-primary">Verify & Login</button>
+                <button id="back-btn" class="btn-link">Change Email</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="main-content" style="display: none;">
+        <header>
+            <div class="logo-section">
+                <h1>Census 2027</h1>
+                <p>Data Management Portal</p>
+            </div>
+            <div class="header-right">
+                <div class="stats">
+                    <span id="record-count">0 Records Found</span>
+                </div>
+                <button id="logout-btn" class="btn-link">Logout</button>
+            </div>
+        </header>
+
+        <main>
+            <div id="data-container" class="data-grid">
+                <!-- Records will be rendered here as cards -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Record</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="edit-form">
+                <div id="form-fields">
+                    <!-- Form fields will be injected here -->
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="btn-primary" id="save-btn">Save to Sheet2</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Data saved to Sheet2!</div>
+
+    <script src="script.js"></script>
+</body>
+</html>
