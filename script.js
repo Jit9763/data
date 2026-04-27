@@ -85,7 +85,11 @@ async function verifyOTP() {
 
 async function fetchData() {
     if (!currentUserEmail) return;
-    showLoader("Loading records...");
+    const container = document.getElementById('data-container');
+    container.innerHTML = ""; // Clear old data
+    recordCount.parentElement.style.display = "none"; // Hide "0 Records Found"
+    
+    showLoader("Fetching Census Records...");
     try {
         const url = `${WEB_APP_URL}?email=${encodeURIComponent(currentUserEmail)}&t=${Date.now()}`;
         const res = await fetch(url);
@@ -96,10 +100,14 @@ async function fetchData() {
         data = r.data || [];
         
         renderTable();
-        recordCount.textContent = `${data.length} Records Found`;
+        
+        if (data.length > 0) {
+            recordCount.textContent = `${data.length} Records Found`;
+            recordCount.parentElement.style.display = "block"; // Show only if found
+        }
     } catch (e) { 
         console.error(e);
-        document.getElementById('data-container').innerHTML = `<div style="text-align:center; padding:2rem; color:red;">
+        container.innerHTML = `<div style="text-align:center; padding:2rem; color:red;">
             Error loading data. Check deployment settings.
         </div>`;
     } finally { hideLoader(); }
