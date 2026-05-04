@@ -51,16 +51,23 @@ async function sendOTP() {
     if (!email) return alert("Email required");
     showLoader("Sending OTP...");
     try {
-        await fetch(WEB_APP_URL, {
+        const res = await fetch(WEB_APP_URL, {
             method: 'POST',
-            mode: 'no-cors',
             body: JSON.stringify({ action: "sendOTP", email: email })
         });
-        currentUserEmail = email;
-        document.getElementById('display-email').textContent = email;
-        emailStep.style.display = "none";
-        otpStep.style.display = "block";
-    } catch (e) { alert("Failed to send OTP"); }
+        const r = await res.json();
+        if (r.status === "sent") {
+            currentUserEmail = email;
+            document.getElementById('display-email').textContent = email;
+            emailStep.style.display = "none";
+            otpStep.style.display = "block";
+        } else {
+            alert(r.msg || "Failed to send OTP");
+        }
+    } catch (e) { 
+        console.error(e);
+        alert("Error: Unable to connect to server."); 
+    }
     finally { hideLoader(); }
 }
 

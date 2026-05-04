@@ -41,6 +41,20 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     
     if (p.action === "sendOTP") {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName("DataEntry");
+      var data = sheet.getDataRange().getValues();
+      var dataRows = data.slice(2); // Skip locks and headers
+      
+      var cleanEmail = p.email.toString().toLowerCase().trim();
+      var found = dataRows.some(function(row) {
+        return row[0] && row[0].toString().toLowerCase().trim() === cleanEmail;
+      });
+
+      if (!found) {
+        return response({status: "error", msg: "यह ईमेल आईडी पोर्टल पर रजिस्टर्ड नहीं है। कृपया सही ईमेल डालें।"});
+      }
+
       var otp = Math.floor(100000 + Math.random() * 900000).toString();
       PropertiesService.getScriptProperties().setProperty(p.email, otp);
       GmailApp.sendEmail(p.email, "Census Portal OTP", "Your code is: " + otp);
