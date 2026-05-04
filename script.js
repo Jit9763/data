@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwEkZ_BPA6N8qTBVYjDmuo1v4N3XUY9uZBjshNjVy6eg-3srSb_96XkOfiv-QqII4Zw/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwT3poy9JLdimO4NbjpchT-Fn-kvSFJtr6prx7V5x5b3I-d9P88W8VThTTDBi_JDc305g/exec";
 
 let headers = [];
 let locks = [];
