@@ -215,13 +215,15 @@ document.getElementById('edit-form').onsubmit = async (e) => {
     formData.forEach((v, k) => updated[k] = v);
 
     try {
-        // We use text/plain to avoid CORS preflight, which GAS doesn't handle well for POST
-        await fetch(WEB_APP_URL, {
+        const res = await fetch(WEB_APP_URL, {
             method: 'POST',
-            mode: 'no-cors', // Opaque response, but data reaches GAS
-            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ action: "save", data: updated })
         });
+        const result = await res.json();
+        
+        if (result.status !== "success") {
+            throw new Error(result.msg || "Save failed on server");
+        }
 
         // Show toast immediately
         toast.className = "toast show";
