@@ -37,12 +37,17 @@ function doGet(e) {
 // doPost stays the same (it appends or updates based on headers)
 function doPost(e) {
   try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return response({status: "error", msg: "No data received"});
+    }
+    
     var p = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     
     if (p.action === "sendOTP") {
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName("DataEntry");
+      if (!sheet) return response({status: "error", msg: "Sheet 'DataEntry' not found"});
+      
       var data = sheet.getDataRange().getValues();
       var dataRows = data.slice(2); // Skip locks and headers
       
@@ -70,22 +75,36 @@ function doPost(e) {
     if (p.action === "save") {
       var mainSheet = ss.getSheetByName("DataEntry");
       var backupSheet = ss.getSheetByName("Sheet2");
+      
+      if (!mainSheet) return response({status: "error", msg: "Main sheet 'DataEntry' not found"});
+      
       var data = mainSheet.getDataRange().getValues();
-      var headers = data[1]; // Headers are in Row 2 now
-      var emailToFind = p.data[headers[0]].toString().toLowerCase().trim();
+      var headers = data[1]; // Headers are in Row 2
+      
+      if (!headers || !p.data) return response({status: "error", msg: "Invalid headers or data"});
+      
+      var emailToFind = (p.data[headers[0]] || "").toString().toLowerCase().trim();
+      if (!emailToFind) return response({status: "error", msg: "Primary ID (Email) missing in request"});
       
       var rowIndex = -1;
-      for (var i = 2; i < data.length; i++) { // Data starts from index 2
-        if (data[i][0].toString().toLowerCase().trim() === emailToFind) {
+      for (var i = 2; i < data.length; i++) {
+        if (data[i][0] && data[i][0].toString().toLowerCase().trim() === emailToFind) {
           rowIndex = i + 1;
-          var oldRow = data[i].slice();
-          oldRow.push(new Date());
-          backupSheet.appendRow(oldRow);
+          
+          // 1. BACKUP OLD DATA TO SHEET2
+          if (backupSheet) {
+            var oldRow = data[i].slice();
+            oldRow.push(new Date());
+            backupSheet.appendRow(oldRow);
+          }
           break;
         }
       }
       
-      var newRow = headers.map(function(h) { return p.data[h] || ""; });
+      var newRow = headers.map(function(h) { 
+        return p.data[h] === undefined ? "" : p.data[h]; 
+      });
+      
       if (rowIndex !== -1) {
         mainSheet.getRange(rowIndex, 1, 1, newRow.length).setValues([newRow]);
         return response({status: "success", msg: "Updated"});
@@ -94,7 +113,12 @@ function doPost(e) {
         return response({status: "success", msg: "Added"});
       }
     }
-  } catch(err) { return response({status: "error", msg: err.toString()}); }
+    
+    return response({status: "error", msg: "Unknown action: " + p.action});
+    
+  } catch(err) { 
+    return response({status: "error", msg: "Server Error: " + err.toString()}); 
+  }
 }
 
 function response(obj) {

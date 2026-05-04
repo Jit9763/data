@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbySlMVOr9XECBfUi00SY_WiajkQspU3Ce0-4NRs4rshRQSOBLeHZVwi2Tw7Yb85D4zHww/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxcspXSs7c7gJX5XbXRJjzgGgoqTJY9VDK3SuHny9jEeV5M-tiMoaYEn6neo0WvLxhazw/exec";
 
 let headers = [];
 let locks = [];
@@ -206,20 +206,41 @@ document.getElementById('cancel-btn').onclick = () => modal.style.display = "non
 document.getElementById('edit-form').onsubmit = async (e) => {
     e.preventDefault();
     const btn = document.getElementById('save-btn');
+    const originalText = btn.textContent;
     btn.textContent = "Saving...";
+    btn.disabled = true;
+
     const formData = new FormData(e.target);
     const updated = {};
     formData.forEach((v, k) => updated[k] = v);
+
     try {
+        // We use text/plain to avoid CORS preflight, which GAS doesn't handle well for POST
         await fetch(WEB_APP_URL, {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'no-cors', // Opaque response, but data reaches GAS
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ action: "save", data: updated })
         });
+
+        // Show toast immediately
         toast.className = "toast show";
         setTimeout(() => toast.className = "toast", 3000);
         modal.style.display = "none";
-        fetchData();
-    } catch (e) { alert("Save failed"); }
-    finally { btn.textContent = "Save to Sheet2"; }
+
+        // IMPORTANT: Wait 1.5 seconds for Google Sheets to finish writing
+        // before we re-fetch the data, otherwise we might see the old data.
+        showLoader("Updating view...");
+        setTimeout(async () => {
+            await fetchData();
+            hideLoader();
+        }, 1500);
+
+    } catch (e) { 
+        console.error("Save error:", e);
+        alert("Save failed. Please check your internet and try again."); 
+    } finally { 
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
 };
