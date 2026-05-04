@@ -240,7 +240,7 @@ document.getElementById('edit-form').onsubmit = async (e) => {
 
     } catch (e) { 
         console.error("Save error:", e);
-        alert("Save failed. Please check your internet and try again."); 
+        alert("Error: " + e.message); 
     } finally { 
         btn.textContent = originalText;
         btn.disabled = false;
