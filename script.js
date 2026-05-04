@@ -188,12 +188,12 @@ function openEditModal(i) {
         const lockIcon = isLocked ? " 🔒" : "";
         
         // Format the value if it's a date
-        const displayValue = formatDate(row[h]);
+        const displayValue = formatDate(row[h]).toString().replace(/"/g, '&quot;');
 
         return `
             <div class="form-group">
                 <label>${h}${lockIcon}</label>
-                <input type="text" name="${h}" value="${displayValue}" ${readOnlyAttr} style="${lockedStyle}">
+                <input type="text" name="field_${index}" value="${displayValue}" ${readOnlyAttr} style="${lockedStyle}">
             </div>
         `;
     }).join('');
@@ -212,7 +212,16 @@ document.getElementById('edit-form').onsubmit = async (e) => {
 
     const formData = new FormData(e.target);
     const updated = {};
-    formData.forEach((v, k) => updated[k] = v);
+    
+    // Map the field_X names back to the exact header strings
+    headers.forEach((h, index) => {
+        updated[h] = formData.get(`field_${index}`);
+    });
+    
+    // Safety fallback: Ensure Primary ID is ALWAYS present using the known currentUserEmail
+    if (headers && headers.length > 0) {
+        updated[headers[0]] = currentUserEmail;
+    }
 
     try {
         const res = await fetch(WEB_APP_URL, {
