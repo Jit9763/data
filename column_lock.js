@@ -101,14 +101,27 @@ function doPost(e) {
         }
       }
       
-      var newRow = headers.map(function(h) { 
-        return p.data[h] === undefined ? "" : p.data[h]; 
-      });
-      
       if (rowIndex !== -1) {
-        mainSheet.getRange(rowIndex, 1, 1, newRow.length).setValues([newRow]);
+        var rowRange = mainSheet.getRange(rowIndex, 1, 1, headers.length);
+        var currentFormulas = rowRange.getFormulas()[0];
+        var currentValues = rowRange.getValues()[0];
+        var locks = data[0]; // Locks are in Row 1
+        
+        var newRow = headers.map(function(h, index) { 
+          var isLocked = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
+          if (isLocked) {
+            // Preserve existing formula or value for locked cells
+            return currentFormulas[index] ? currentFormulas[index] : currentValues[index];
+          }
+          return p.data[h] != null ? p.data[h] : ""; 
+        });
+        
+        rowRange.setValues([newRow]);
         return response({status: "success", msg: "Updated"});
       } else {
+        var newRow = headers.map(function(h) { 
+          return p.data[h] != null ? p.data[h] : ""; 
+        });
         mainSheet.appendRow(newRow);
         return response({status: "success", msg: "Added"});
       }
