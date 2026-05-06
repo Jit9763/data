@@ -27,12 +27,25 @@ function doPost(e) {
       
       if (rowIndex !== -1) {
         // 2. UPDATE MAIN SHEET WITH NEW DATA
-        var newRow = headers.map(function(h) { return p.data[h] || ""; });
-        mainSheet.getRange(rowIndex, 1, 1, newRow.length).setValues([newRow]);
+        var rowRange = mainSheet.getRange(rowIndex, 1, 1, headers.length);
+        var currentFormulas = rowRange.getFormulas()[0];
+        var currentValues = rowRange.getValues()[0];
+        var locks = p.locks || [];
+        
+        var newRow = headers.map(function(h, index) { 
+          var isLocked = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
+          if (isLocked) {
+            // Preserve existing formula or value for locked cells
+            return currentFormulas[index] ? currentFormulas[index] : currentValues[index];
+          }
+          return p.data[h] != null ? p.data[h] : ""; 
+        });
+        
+        rowRange.setValues([newRow]);
         return response({status: "success", message: "Updated and Backed up"});
       } else {
         // If not found, just append as new
-        mainSheet.appendRow(headers.map(function(h) { return p.data[h] || ""; }));
+        mainSheet.appendRow(headers.map(function(h) { return p.data[h] != null ? p.data[h] : ""; }));
         return response({status: "success", message: "New record added"});
       }
     }

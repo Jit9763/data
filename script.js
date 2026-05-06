@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxcspXSs7c7gJX5XbXRJjzgGgoqTJY9VDK3SuHny9jEeV5M-tiMoaYEn6neo0WvLxhazw/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxTvAFZFJIAIR2Jd_-Uy0CwqRizYdcP-9gCVQ6ZM3g4xdOTSwWwLmKialPY6U-2g0Jevg/exec";
 
 let headers = [];
 let locks = [];
@@ -215,18 +215,15 @@ document.getElementById('edit-form').onsubmit = async (e) => {
     
     // Map the field_X names back to the exact header strings
     headers.forEach((h, index) => {
-        updated[h] = formData.get(`field_${index}`);
+        let val = formData.get(`field_${index}`);
+        if (val === "-") val = ""; // Prevent saving the placeholder dash
+        updated[h] = val;
     });
-    
-    // Safety fallback: Ensure Primary ID is ALWAYS present using the known currentUserEmail
-    if (headers && headers.length > 0) {
-        updated[headers[0]] = currentUserEmail;
-    }
 
     try {
         const res = await fetch(WEB_APP_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: "save", data: updated })
+            body: JSON.stringify({ action: "save", data: updated, locks: locks })
         });
         const result = await res.json();
         
