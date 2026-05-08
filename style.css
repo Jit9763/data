@@ -169,6 +169,54 @@ header {
     background: var(--primary-dark);
 }
 
+.card-footer {
+    background: #f1f5f9;
+    padding: 1.25rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: center;
+}
+
+.btn-map {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    text-decoration: none;
+    padding: 0.8rem 2.5rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2), 0 2px 4px -1px rgba(16, 185, 129, 0.1);
+}
+
+.btn-map:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3), 0 4px 6px -2px rgba(16, 185, 129, 0.2);
+    filter: brightness(1.05);
+}
+
+.btn-map:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.no-map {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    font-style: italic;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.no-map::before {
+    content: '⚠️';
+}
+
 /* Modal Styles */
 .modal {
     display: none;

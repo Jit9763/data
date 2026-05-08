@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxTvAFZFJIAIR2Jd_-Uy0CwqRizYdcP-9gCVQ6ZM3g4xdOTSwWwLmKialPY6U-2g0Jevg/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbznkmpiwOHZ5SRiEfGXl54INbluE1HgUY08nSscvLFMP9aCiPmS0Tm6bXH2h8qPMBiW6g/exec";
 
 let headers = [];
 let locks = [];
@@ -105,6 +105,7 @@ async function fetchData() {
         headers = r.headers || [];
         locks = r.locks || [];
         data = r.data || [];
+        window._lastDebugInfo = r.debugInfo; // Store debug info
         
         renderTable();
         
@@ -166,6 +167,18 @@ function renderTable() {
             ? `<span style="color: #ef4444; font-weight: 600; font-size: 0.8rem;">🔒 READ ONLY</span>`
             : `<button class="btn-edit" onclick="openEditModal(${i})">Edit Details</button>`;
 
+        const mapLink = row._mapLink;
+        const driveErr = row._driveError;
+        
+        let mapButton = "";
+        if (mapLink) {
+            mapButton = `<a href="${mapLink}" target="_blank" class="btn-map">🗺️ View & Download Map</a>`;
+        } else if (driveErr) {
+            mapButton = `<div class="no-map" style="color: #ef4444;">Drive Connection Error</div>`;
+        } else {
+            mapButton = `<div class="no-map">Map Not Found</div>`;
+        }
+
         card.innerHTML = `
             <div class="card-header">
                 <h3>${mainId}</h3>
@@ -173,6 +186,9 @@ function renderTable() {
             </div>
             <div class="card-body">
                 ${infoItems}
+            </div>
+            <div class="card-footer">
+                ${mapButton}
             </div>
         `;
         container.appendChild(card);
@@ -182,6 +198,9 @@ function renderTable() {
 function openEditModal(i) {
     const row = data[i];
     document.getElementById('form-fields').innerHTML = headers.map((h, index) => {
+        // Skip hidden/internal fields
+        if (h.startsWith('_')) return "";
+        
         const isLocked = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
         const readOnlyAttr = isLocked ? "readonly" : "";
         const lockedStyle = isLocked ? "background: #f1f5f9; color: #64748b; cursor: not-allowed;" : "";
