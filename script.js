@@ -4,6 +4,7 @@ let headers = [];
 let locks = [];
 let data = [];
 let currentUserEmail = localStorage.getItem('census_email') || "";
+let currentEditIndex = -1;
 
 // Elements
 const loginScreen = document.getElementById('login-screen');
@@ -196,6 +197,7 @@ function renderTable() {
 }
 
 function openEditModal(i) {
+    currentEditIndex = i;
     const row = data[i];
     document.getElementById('form-fields').innerHTML = headers.map((h, index) => {
         // Skip hidden/internal fields
@@ -239,10 +241,13 @@ document.getElementById('edit-form').onsubmit = async (e) => {
         updated[h] = val;
     });
 
+    const rowData = data[currentEditIndex];
+    const rowIndex = rowData ? rowData._rowIndex : -1;
+
     try {
         const res = await fetch(WEB_APP_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: "save", data: updated, locks: locks })
+            body: JSON.stringify({ action: "save", data: updated, locks: locks, rowIndex: rowIndex })
         });
         const result = await res.json();
         

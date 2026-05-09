@@ -25,7 +25,7 @@ function doGet(e) {
     var blockColIdx = -1;
     for (var i = 0; i < headers.length; i++) {
       var head = headers[i].toString().toLowerCase().trim();
-      if (head === "hlb new") {
+      if (head === "hlb new" || head === "new hlb") {
         blockColIdx = i;
         break; 
       }
@@ -36,17 +36,60 @@ function doGet(e) {
     if (blockColIdx === -1) blockColIdx = 7;
 
     // Helper to find map in Drive
-    function findMap(blockNo) {
-      if (!blockNo) return "";
-      blockNo = blockNo.toString().trim();
+    function findMap(blockVal) {
+      if (!blockVal) return "";
+      blockVal = blockVal.toString().trim();
+      
+      // Extract the first number from the string
+      var match = blockVal.match(/\d+/);
+      var numStr = match ? match[0] : blockVal;
+      var numInt = parseInt(numStr, 10);
+      
       try {
         var folderId = "1jkEnjLvEdWnS1KzK-1z4MO3i5ZoIChwh";
         var folder = DriveApp.getFolderById(folderId);
-        var files = folder.getFilesByName(blockNo + ".pdf");
-        if (files.hasNext()) return files.next().getUrl();
         
-        var fuzzy = folder.searchFiles("title contains '" + blockNo + "' and mimeType = 'application/pdf' and trashed = false");
-        if (fuzzy.hasNext()) return fuzzy.next().getUrl();
+        // 1. Try exact matches with zero-paddings
+        if (!isNaN(numInt)) {
+          var paddings = [];
+          var str = numInt.toString();
+          paddings.push(str);
+          if (str.length < 2) paddings.push("0" + str);
+          if (str.length < 3) paddings.push("00" + str);
+          if (str.length < 4) paddings.push("000" + str);
+          
+          for (var i = 0; i < paddings.length; i++) {
+            var files = folder.getFilesByName(paddings[i] + ".pdf");
+            if (files.hasNext()) return files.next().getUrl();
+          }
+        }
+        
+        // 2. Try raw string match just in case
+        var rawFiles = folder.getFilesByName(blockVal + ".pdf");
+        if (rawFiles.hasNext()) return rawFiles.next().getUrl();
+        
+        // 3. Fuzzy search fallback: search for the number, then verify
+        var fuzzy = folder.searchFiles("title contains '" + numStr + "' and mimeType = 'application/pdf' and trashed = false");
+        var possibleUrls = [];
+        
+        while (fuzzy.hasNext()) {
+          var f = fuzzy.next();
+          var fname = f.getName();
+          
+          if (!isNaN(numInt)) {
+            // Ensure the file name actually contains this EXACT number (e.g. 5, not 15)
+            var fNums = fname.match(/\d+/g) || [];
+            for (var k = 0; k < fNums.length; k++) {
+              if (parseInt(fNums[k], 10) === numInt) {
+                return f.getUrl();
+              }
+            }
+          }
+          possibleUrls.push(f.getUrl());
+        }
+        
+        if (possibleUrls.length > 0) return possibleUrls[0];
+        
       } catch (e) { console.warn(e.toString()); }
       return "";
     }
@@ -60,7 +103,7 @@ function doGet(e) {
       }
     }
 
-    var filtered = [];
+    var mappedData = [];
     if (userRow) {
       // Index 7 = HLB NEW (Column H), Index 8 = SUPERVISER NO. (Column I)
       var hlbNew = userRow[7] ? userRow[7].toString().trim() : "";
@@ -68,25 +111,30 @@ function doGet(e) {
       
       if (hlbNew === "" && supervisorNo !== "") {
         // USER IS A SUPERVISOR: Show all records with this Supervisor No
-        filtered = dataRows.filter(function(row) {
-          return row[8] && row[8].toString().trim() === supervisorNo;
-        });
+        for (var i = 0; i < dataRows.length; i++) {
+          if (dataRows[i][8] && dataRows[i][8].toString().trim() === supervisorNo) {
+            mappedData.push(createMappedObject(dataRows[i], i + 3)); // +3 because data array is 0-indexed and sheet is 1-indexed with 2 header rows
+          }
+        }
       } else {
         // NORMAL USER: Show only their own records (might be multiple if email repeated)
-        filtered = dataRows.filter(function(row) {
-          return row[0] && row[0].toString().toLowerCase().trim() === cleanEmail;
-        });
+        for (var i = 0; i < dataRows.length; i++) {
+          if (dataRows[i][0] && dataRows[i][0].toString().toLowerCase().trim() === cleanEmail) {
+            mappedData.push(createMappedObject(dataRows[i], i + 3));
+          }
+        }
       }
     }
 
-    var mappedData = filtered.map(function(row) {
+    function createMappedObject(row, rowIndex) {
       var obj = {};
       headers.forEach(function(h, i) { obj[h] = row[i]; });
       
       var blockNo = row[blockColIdx];
       obj._mapLink = findMap(blockNo);
+      obj._rowIndex = rowIndex;
       return obj;
-    });
+    }
     
     return ContentService.createTextOutput(JSON.stringify({
       headers: headers, 
@@ -155,35 +203,41 @@ function doPost(e) {
       
       if (!headers || !p.data) return response({status: "error", msg: "Invalid headers or data"});
       
+      var rowIndex = p.rowIndex || -1;
       var emailToFind = (p.data[headers[0]] || "").toString().toLowerCase().trim();
-      if (!emailToFind) return response({status: "error", msg: "Primary ID (Email) missing in request"});
       
-      var rowIndex = -1;
-      for (var i = 2; i < data.length; i++) {
-        if (data[i][0] && data[i][0].toString().toLowerCase().trim() === emailToFind) {
-          rowIndex = i + 1;
-          
-          // 1. BACKUP OLD DATA TO SHEET2
-          if (backupSheet) {
-            var oldRow = data[i].slice();
-            oldRow.push(new Date());
-            backupSheet.appendRow(oldRow);
+      if (rowIndex === -1 && emailToFind) {
+        for (var i = 2; i < data.length; i++) {
+          if (data[i][0] && data[i][0].toString().toLowerCase().trim() === emailToFind) {
+            rowIndex = i + 1;
+            break;
           }
-          break;
         }
       }
       
       if (rowIndex !== -1) {
+        // 1. BACKUP OLD DATA TO SHEET2
+        if (backupSheet && (rowIndex - 1) < data.length) {
+          var oldRow = data[rowIndex - 1].slice();
+          oldRow.push(new Date());
+          backupSheet.appendRow(oldRow);
+        }
+        
         var rowRange = mainSheet.getRange(rowIndex, 1, 1, headers.length);
         var currentFormulas = rowRange.getFormulas()[0];
         var currentValues = rowRange.getValues()[0];
         var locks = data[0]; // Locks are in Row 1
         
         var newRow = headers.map(function(h, index) { 
+          // Preserve formula
+          if (currentFormulas[index]) {
+            return currentFormulas[index];
+          }
+          
           var isLocked = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
           if (isLocked) {
             // Preserve existing formula or value for locked cells
-            return currentFormulas[index] ? currentFormulas[index] : currentValues[index];
+            return currentValues[index];
           }
           return p.data[h] != null ? p.data[h] : ""; 
         });
@@ -191,6 +245,7 @@ function doPost(e) {
         rowRange.setValues([newRow]);
         return response({status: "success", msg: "Updated"});
       } else {
+        if (!emailToFind) return response({status: "error", msg: "Primary ID (Email) missing in request"});
         var newRow = headers.map(function(h) { 
           return p.data[h] != null ? p.data[h] : ""; 
         });
