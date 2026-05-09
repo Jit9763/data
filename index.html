@@ -24,6 +24,7 @@
             <div id="email-step">
                 <input type="email" id="login-email" placeholder="email@example.com" required>
                 <button id="send-otp-btn" class="btn-primary">Send OTP</button>
+                <button id="show-admin-login-btn" class="btn-link" style="margin-top: 15px;">Admin Login</button>
             </div>
 
             <div id="otp-step" style="display: none;">
@@ -31,6 +32,14 @@
                 <input type="text" id="login-otp" placeholder="Enter 6-digit OTP" maxlength="6">
                 <button id="verify-otp-btn" class="btn-primary">Verify & Login</button>
                 <button id="back-btn" class="btn-link">Change Email</button>
+            </div>
+
+            <div id="admin-login-step" style="display: none;">
+                <p style="color: var(--primary); font-weight: 600;">Admin Access</p>
+                <input type="email" id="admin-email" placeholder="Admin Email" value="jitendra.choudhery@gmail.com" required>
+                <input type="password" id="admin-pin" placeholder="Enter Admin PIN" required>
+                <button id="admin-login-btn" class="btn-primary">Login as Admin</button>
+                <button id="back-to-user-login-btn" class="btn-link">User Login</button>
             </div>
         </div>
     </div>
@@ -50,6 +59,18 @@
         </header>
 
         <main>
+            <div id="table-controls" style="display: none; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                    <div style="flex: 1; min-width: 250px; display: flex; gap: 10px;">
+                        <input type="text" id="search-input" placeholder="Search by Name or Mobile No..." style="flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-family: inherit;">
+                        <button id="sort-hlb-btn" class="btn-secondary" style="white-space: nowrap;">Sort by HLB ↕</button>
+                    </div>
+                </div>
+                <div id="column-toggles" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <!-- Checkboxes injected by JS -->
+                </div>
+            </div>
+
             <div id="data-container" class="data-grid">
                 <!-- Records will be rendered here as cards -->
             </div>

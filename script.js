@@ -6,6 +6,9 @@ let data = [];
 let currentUserEmail = localStorage.getItem('census_email') || "";
 let currentEditIndex = -1;
 let isAdmin = false;
+let searchQuery = "";
+let sortAsc = true;
+let hiddenColumns = new Set();
 
 // Elements
 const loginScreen = document.getElementById('login-screen');
@@ -46,6 +49,29 @@ document.getElementById('logout-btn').onclick = () => {
 document.getElementById('back-btn').onclick = () => {
     emailStep.style.display = "block";
     otpStep.style.display = "none";
+};
+
+// Admin Login Handlers
+document.getElementById('show-admin-login-btn').onclick = () => {
+    document.getElementById('email-step').style.display = "none";
+    document.getElementById('admin-login-step').style.display = "block";
+};
+document.getElementById('back-to-user-login-btn').onclick = () => {
+    document.getElementById('email-step').style.display = "block";
+    document.getElementById('admin-login-step').style.display = "none";
+};
+document.getElementById('admin-login-btn').onclick = () => {
+    const pin = document.getElementById('admin-pin').value;
+    const email = document.getElementById('admin-email').value.trim();
+    if (pin === "15209763") {
+        currentUserEmail = email;
+        localStorage.setItem('census_email', currentUserEmail);
+        loginScreen.style.display = "none";
+        mainContent.style.display = "block";
+        fetchData();
+    } else {
+        alert("Incorrect PIN");
+    }
 };
 
 async function sendOTP() {
@@ -111,8 +137,10 @@ async function fetchData() {
         window._lastDebugInfo = r.debugInfo; // Store debug info
         
         if (isAdmin) {
+            setupTableControls();
             renderAdminTable();
         } else {
+            document.getElementById('table-controls').style.display = 'none';
             renderTable();
         }
         
@@ -140,6 +168,50 @@ function formatDate(val) {
     return val;
 }
 
+function setupTableControls() {
+    document.getElementById('table-controls').style.display = 'block';
+    
+    const toggleContainer = document.getElementById('column-toggles');
+    if (toggleContainer.innerHTML.trim() === "") {
+        headers.forEach((h, idx) => {
+            if (idx === 0) return; // Keep ID always visible initially, but wait, let's allow toggling everything except Name and HLB? No, just allow everything.
+            if (h.toLowerCase().includes('name') || h.toLowerCase().includes('नाम') || h.toLowerCase().includes('hlb') || idx === 0) {
+                // Default visible
+            } else {
+                hiddenColumns.add(idx); // Hide others by default to keep it clean
+            }
+        });
+
+        headers.forEach((h, idx) => {
+            if (idx === 0) return;
+            const label = document.createElement('label');
+            label.style = "display: flex; align-items: center; gap: 5px; font-size: 0.85rem; background: #f1f5f9; padding: 4px 10px; border-radius: 20px; cursor: pointer; border: 1px solid #e2e8f0; user-select: none;";
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = !hiddenColumns.has(idx);
+            cb.onchange = (e) => {
+                if (e.target.checked) hiddenColumns.delete(idx);
+                else hiddenColumns.add(idx);
+                renderAdminTable();
+            };
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(h));
+            toggleContainer.appendChild(label);
+        });
+
+        document.getElementById('search-input').oninput = (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderAdminTable();
+        };
+
+        document.getElementById('sort-hlb-btn').onclick = () => {
+            sortAsc = !sortAsc;
+            document.getElementById('sort-hlb-btn').textContent = sortAsc ? "Sort by HLB ↑" : "Sort by HLB ↓";
+            renderAdminTable();
+        };
+    }
+}
+
 function renderAdminTable() {
     const container = document.getElementById('data-container');
     
@@ -151,32 +223,61 @@ function renderAdminTable() {
         return;
     }
 
-    // Determine which columns to show in the table: ID + locked columns
-    const columnsToShow = [0]; // Always show ID (index 0)
-    locks.forEach((lock, index) => {
-        if (index > 0 && lock && lock.toString().toLowerCase().trim() === "locked") {
-            columnsToShow.push(index);
+    let nameIdx = headers.findIndex(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('नाम'));
+    let hlbIdx = headers.findIndex(h => h.toLowerCase().includes('hlb'));
+    let mobileIdx = headers.findIndex(h => h.toLowerCase().includes('mobile') || h.toLowerCase().includes('मोबाइल'));
+
+    let columnsToShow = [];
+    columnsToShow.push(0); // ID
+    if (nameIdx !== -1 && !hiddenColumns.has(nameIdx)) columnsToShow.push(nameIdx);
+    
+    headers.forEach((h, idx) => {
+        if (idx !== 0 && idx !== nameIdx && idx !== hlbIdx && !hiddenColumns.has(idx)) {
+            columnsToShow.push(idx);
         }
     });
+    
+    if (hlbIdx !== -1 && !hiddenColumns.has(hlbIdx)) columnsToShow.push(hlbIdx);
+
+    let displayData = [...data];
+    
+    if (searchQuery) {
+        displayData = displayData.filter(row => {
+            let nameVal = nameIdx !== -1 ? (row[headers[nameIdx]] || "").toString().toLowerCase() : "";
+            let mobileVal = mobileIdx !== -1 ? (row[headers[mobileIdx]] || "").toString().toLowerCase() : "";
+            return nameVal.includes(searchQuery) || mobileVal.includes(searchQuery);
+        });
+    }
+
+    if (hlbIdx !== -1) {
+        displayData.sort((a, b) => {
+            let matchA = (a[headers[hlbIdx]] || "0").toString().match(/\d+/);
+            let matchB = (b[headers[hlbIdx]] || "0").toString().match(/\d+/);
+            let valA = parseInt(matchA ? matchA[0] : "0", 10);
+            let valB = parseInt(matchB ? matchB[0] : "0", 10);
+            return sortAsc ? valA - valB : valB - valA;
+        });
+    }
 
     let tableHTML = `
         <div style="overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%;">
             <table class="admin-table" style="width: 100%; min-width: 800px; border-collapse: collapse; text-align: left;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                        ${columnsToShow.map(idx => `<th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc;">${headers[idx]}</th>`).join('')}
-                        <th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc;">Map PDF</th>
-                        <th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc;">Action</th>
+                        ${columnsToShow.map(idx => `<th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc; white-space: nowrap;">${headers[idx]}</th>`).join('')}
+                        <th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc; white-space: nowrap;">Map PDF</th>
+                        <th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc; white-space: nowrap;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
 
-    data.forEach((row, i) => {
+    displayData.forEach((row, i) => {
+        let originalIndex = data.indexOf(row);
         let rowHTML = `<tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'">`;
         
         columnsToShow.forEach(idx => {
-            rowHTML += `<td style="padding: 12px 16px; color: #0f172a;">${formatDate(row[headers[idx]])}</td>`;
+            rowHTML += `<td style="padding: 12px 16px; color: #0f172a; white-space: nowrap;">${formatDate(row[headers[idx]])}</td>`;
         });
 
         // Map PDF Column
@@ -192,7 +293,7 @@ function renderAdminTable() {
         
         // Action Column
         rowHTML += `<td style="padding: 12px 16px;">
-            <button class="btn-primary" onclick="openEditModal(${i})" style="padding: 6px 12px; font-size: 1.1rem; border-radius: 6px;" title="View & Edit Details">👁️</button>
+            <button class="btn-primary" onclick="openEditModal(${originalIndex})" style="padding: 6px 12px; font-size: 1.1rem; border-radius: 6px;" title="View & Edit Details">👁️</button>
         </td>`;
         
         rowHTML += `</tr>`;
