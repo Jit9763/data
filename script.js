@@ -176,12 +176,9 @@ function setupTableControls() {
         headers.forEach((h, idx) => {
             if (idx === 0) return;
             let hLower = h.toLowerCase();
+            let isLocked = locks[idx] && locks[idx].toString().toLowerCase().trim() === "locked";
             if (hLower.includes('name') || hLower.includes('नाम') || 
-                hLower.includes('hlb') || 
-                hLower.includes('supervis') || hLower.includes('circle') ||
-                hLower.includes('mobile') || hLower.includes('मोबाइल') ||
-                hLower.includes('email') || 
-                idx === 6 || idx === 11) {
+                hLower.includes('hlb') || isLocked) {
                 // Default visible
             } else {
                 hiddenColumns.add(idx); // Hide others by default
@@ -363,14 +360,23 @@ function renderTable() {
         card.className = 'record-card';
         
         const mainId = row[headers[0]] || "N/A";
-        const otherHeaders = headers.slice(1);
-
-        let infoItems = otherHeaders.map(h => `
-            <div class="info-item">
-                <div class="info-label">${h}</div>
-                <div class="info-value">${formatDate(row[h])}</div>
-            </div>
-        `).join('');
+        
+        let infoItems = headers.map((h, idx) => {
+            if (idx === 0) return ""; // Skip ID
+            let hLower = h.toLowerCase();
+            let isLocked = locks[idx] && locks[idx].toString().toLowerCase().trim() === "locked";
+            
+            // Show only Name and Locked columns in the main view
+            if (hLower.includes('name') || hLower.includes('नाम') || isLocked) {
+                return `
+                    <div class="info-item">
+                        <div class="info-label">${h}</div>
+                        <div class="info-value">${formatDate(row[h])}</div>
+                    </div>
+                `;
+            }
+            return "";
+        }).join('');
 
         const editButton = Object.values(row).some(v => v && v.toString().toLowerCase().trim() === "locked") 
             ? `<span style="color: #ef4444; font-weight: 600; font-size: 0.8rem;">🔒 READ ONLY</span>`
