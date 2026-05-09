@@ -102,10 +102,7 @@ function doGet(e) {
               }
             }
           }
-          possibleUrls.push({ url: f.getUrl(), name: fname });
         }
-        
-        if (possibleUrls.length > 0) return possibleUrls[0];
         
       } catch (e) { console.warn(e.toString()); }
       return { url: "", name: "Not Found" };
