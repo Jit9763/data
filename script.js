@@ -183,7 +183,7 @@ function setupTableControls() {
     document.getElementById('table-controls').style.display = 'block';
     
     const toggleContainer = document.getElementById('column-toggles');
-    if (toggleContainer.innerHTML.trim() === "") {
+    if (toggleContainer.children.length === 0) {
         headers.forEach((h, idx) => {
             if (idx === 0) return;
             let hLower = h.toLowerCase();
