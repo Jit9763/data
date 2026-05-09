@@ -180,8 +180,7 @@ function setupTableControls() {
             if (idx === 0) return;
             let hLower = h.toLowerCase();
             let isLocked = locks[idx] && locks[idx].toString().toLowerCase().trim() === "locked";
-            if (hLower.includes('name') || hLower.includes('नाम') || 
-                hLower.includes('hlb') || isLocked) {
+            if (hLower.includes('name') || hLower.includes('नाम') || isLocked) {
                 // Default visible
             } else {
                 hiddenColumns.add(idx); // Hide others by default
@@ -289,12 +288,10 @@ function renderAdminTable() {
     if (nameIdx !== -1 && !hiddenColumns.has(nameIdx)) columnsToShow.push(nameIdx);
     
     headers.forEach((h, idx) => {
-        if (idx !== 0 && idx !== nameIdx && idx !== hlbIdx && !hiddenColumns.has(idx)) {
+        if (idx !== 0 && idx !== nameIdx && !hiddenColumns.has(idx)) {
             columnsToShow.push(idx);
         }
     });
-    
-    if (hlbIdx !== -1 && !hiddenColumns.has(hlbIdx)) columnsToShow.push(hlbIdx);
 
     let displayData = [...data];
     
