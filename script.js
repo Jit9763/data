@@ -10,6 +10,7 @@ let searchQuery = "";
 let sortField = "supervisor"; // Default sort
 let sortAsc = true;
 let currentPage = 1;
+let isFullyLoaded = false;
 const rowsPerPage = 10;
 let hiddenColumns = new Set();
 
@@ -141,7 +142,14 @@ async function fetchData() {
         
         if (isAdmin) {
             setupTableControls();
+            currentPage = 1;
             renderAdminTable();
+            // Background load remaining rows after 1 second so scrolling is smooth
+            setTimeout(() => {
+                isFullyLoaded = true;
+                currentPage = Math.ceil(data.length / rowsPerPage);
+                renderAdminTable();
+            }, 1000);
         } else {
             document.getElementById('table-controls').style.display = 'none';
             renderTable();
@@ -179,8 +187,12 @@ function setupTableControls() {
         headers.forEach((h, idx) => {
             if (idx === 0) return;
             let hLower = h.toLowerCase();
-            let isLocked = locks[idx] && locks[idx].toString().toLowerCase().trim() === "locked";
-            if (hLower.includes('name') || hLower.includes('नाम') || isLocked) {
+            if (hLower.includes('name') || hLower.includes('नाम') || 
+                hLower.includes('hlb') || 
+                hLower.includes('supervis') || hLower.includes('circle') ||
+                hLower.includes('mobile') || hLower.includes('मोबाइल') ||
+                hLower.includes('email') || 
+                idx === 6 || idx === 11) {
                 // Default visible
             } else {
                 hiddenColumns.add(idx); // Hide others by default
@@ -206,14 +218,14 @@ function setupTableControls() {
 
         document.getElementById('search-input').oninput = (e) => {
             searchQuery = e.target.value.toLowerCase();
-            currentPage = 1;
+            if (!isFullyLoaded) currentPage = 1;
             renderAdminTable();
         };
 
         document.getElementById('sort-hlb-btn').onclick = () => {
             sortField = 'hlb';
             sortAsc = !sortAsc;
-            currentPage = 1;
+            if (!isFullyLoaded) currentPage = 1;
             document.getElementById('sort-hlb-btn').textContent = sortAsc ? "Sort by HLB ↑" : "Sort by HLB ↓";
             document.getElementById('sort-super-btn').textContent = "Sort by Supervisor ↕";
             renderAdminTable();
@@ -222,7 +234,7 @@ function setupTableControls() {
         document.getElementById('sort-super-btn').onclick = () => {
             sortField = 'supervisor';
             sortAsc = !sortAsc;
-            currentPage = 1;
+            if (!isFullyLoaded) currentPage = 1;
             document.getElementById('sort-super-btn').textContent = sortAsc ? "Sort by Supervisor ↑" : "Sort by Supervisor ↓";
             document.getElementById('sort-hlb-btn').textContent = "Sort by HLB ↕";
             renderAdminTable();
@@ -288,10 +300,12 @@ function renderAdminTable() {
     if (nameIdx !== -1 && !hiddenColumns.has(nameIdx)) columnsToShow.push(nameIdx);
     
     headers.forEach((h, idx) => {
-        if (idx !== 0 && idx !== nameIdx && !hiddenColumns.has(idx)) {
+        if (idx !== 0 && idx !== nameIdx && idx !== hlbIdx && !hiddenColumns.has(idx)) {
             columnsToShow.push(idx);
         }
     });
+
+    if (hlbIdx !== -1 && !hiddenColumns.has(hlbIdx)) columnsToShow.push(hlbIdx);
 
     let displayData = [...data];
     
