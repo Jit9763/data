@@ -181,11 +181,14 @@ function doPost(e) {
       var dataRows = data.slice(2); // Skip locks and headers
       
       var cleanEmail = p.email.toString().toLowerCase().trim();
+      var adminEmails = ["jitendra.choudhery@gamil.com", "jitendra.choudhery@gmail.com"];
+      var isAdmin = adminEmails.indexOf(cleanEmail) !== -1;
+      
       var found = dataRows.some(function(row) {
         return row[0] && row[0].toString().toLowerCase().trim() === cleanEmail;
       });
 
-      if (!found) {
+      if (!found && !isAdmin) {
         return response({status: "error", msg: "यह ईमेल आईडी पोर्टल पर रजिस्टर्ड नहीं है। कृपया सही ईमेल डालें।"});
       }
 
