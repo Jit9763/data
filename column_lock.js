@@ -37,7 +37,7 @@ function doGet(e) {
 
     // Helper to find map in Drive
     function findMap(blockVal) {
-      if (!blockVal) return "";
+      if (!blockVal) return { url: "", name: "No Block Number" };
       blockVal = blockVal.toString().trim();
       
       // Extract the first number from the string
@@ -60,13 +60,19 @@ function doGet(e) {
           
           for (var i = 0; i < paddings.length; i++) {
             var files = folder.getFilesByName(paddings[i] + ".pdf");
-            if (files.hasNext()) return files.next().getUrl();
+            if (files.hasNext()) {
+              var f = files.next();
+              return { url: f.getUrl(), name: f.getName() };
+            }
           }
         }
         
         // 2. Try raw string match just in case
         var rawFiles = folder.getFilesByName(blockVal + ".pdf");
-        if (rawFiles.hasNext()) return rawFiles.next().getUrl();
+        if (rawFiles.hasNext()) {
+          var f = rawFiles.next();
+          return { url: f.getUrl(), name: f.getName() };
+        }
         
         // 3. Fuzzy search fallback: search for the number, then verify
         var fuzzy = folder.searchFiles("title contains '" + numStr + "' and mimeType = 'application/pdf' and trashed = false");
@@ -81,17 +87,17 @@ function doGet(e) {
             var fNums = fname.match(/\d+/g) || [];
             for (var k = 0; k < fNums.length; k++) {
               if (parseInt(fNums[k], 10) === numInt) {
-                return f.getUrl();
+                return { url: f.getUrl(), name: fname };
               }
             }
           }
-          possibleUrls.push(f.getUrl());
+          possibleUrls.push({ url: f.getUrl(), name: fname });
         }
         
         if (possibleUrls.length > 0) return possibleUrls[0];
         
       } catch (e) { console.warn(e.toString()); }
-      return "";
+      return { url: "", name: "Not Found" };
     }
 
     // 1. Find the user's own record first to check if they are a supervisor
@@ -104,7 +110,15 @@ function doGet(e) {
     }
 
     var mappedData = [];
-    if (userRow) {
+    var adminEmails = ["jitendra.choudhery@gamil.com", "jitendra.choudhery@gmail.com"];
+    var isAdmin = adminEmails.indexOf(cleanEmail) !== -1;
+
+    if (isAdmin) {
+      // ADMIN: Show all records
+      for (var i = 0; i < dataRows.length; i++) {
+        mappedData.push(createMappedObject(dataRows[i], i + 3));
+      }
+    } else if (userRow) {
       // Index 7 = HLB NEW (Column H), Index 8 = SUPERVISER NO. (Column I)
       var hlbNew = userRow[7] ? userRow[7].toString().trim() : "";
       var supervisorNo = userRow[8] ? userRow[8].toString().trim() : "";
@@ -131,7 +145,9 @@ function doGet(e) {
       headers.forEach(function(h, i) { obj[h] = row[i]; });
       
       var blockNo = row[blockColIdx];
-      obj._mapLink = findMap(blockNo);
+      var mapInfo = findMap(blockNo);
+      obj._mapLink = mapInfo.url;
+      obj._mapName = mapInfo.name;
       obj._rowIndex = rowIndex;
       return obj;
     }
@@ -139,7 +155,8 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify({
       headers: headers, 
       locks: locks, 
-      data: mappedData
+      data: mappedData,
+      isAdmin: isAdmin
     })).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
     return ContentService.createTextOutput(JSON.stringify({error: err.toString()})).setMimeType(ContentService.MimeType.JSON);
@@ -228,16 +245,21 @@ function doPost(e) {
         var currentValues = rowRange.getValues()[0];
         var locks = data[0]; // Locks are in Row 1
         
+        var adminEmails = ["jitendra.choudhery@gamil.com", "jitendra.choudhery@gmail.com"];
+        var isSaverAdmin = p.email && adminEmails.indexOf(p.email.toString().toLowerCase().trim()) !== -1;
+
         var newRow = headers.map(function(h, index) { 
           // Preserve formula
           if (currentFormulas[index]) {
             return currentFormulas[index];
           }
           
-          var isLocked = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
-          if (isLocked) {
-            // Preserve existing formula or value for locked cells
-            return currentValues[index];
+          if (!isSaverAdmin) {
+            var isLocked = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
+            if (isLocked) {
+              // Preserve existing formula or value for locked cells
+              return currentValues[index];
+            }
           }
           return p.data[h] != null ? p.data[h] : ""; 
         });

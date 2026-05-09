@@ -5,6 +5,7 @@ let locks = [];
 let data = [];
 let currentUserEmail = localStorage.getItem('census_email') || "";
 let currentEditIndex = -1;
+let isAdmin = false;
 
 // Elements
 const loginScreen = document.getElementById('login-screen');
@@ -106,9 +107,14 @@ async function fetchData() {
         headers = r.headers || [];
         locks = r.locks || [];
         data = r.data || [];
+        isAdmin = r.isAdmin || false; // Set global admin flag
         window._lastDebugInfo = r.debugInfo; // Store debug info
         
-        renderTable();
+        if (isAdmin) {
+            renderAdminTable();
+        } else {
+            renderTable();
+        }
         
         if (data.length > 0) {
             recordCount.textContent = `${data.length} Records Found`;
@@ -132,6 +138,74 @@ function formatDate(val) {
         }
     }
     return val;
+}
+
+function renderAdminTable() {
+    const container = document.getElementById('data-container');
+    
+    if (data.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:3rem; color:#1e293b; background:white; border-radius:1.5rem; border: 1px solid #e2e8f0;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+            <h3 style="margin-bottom: 1rem; color: #ef4444;">NO RECORDS FOUND</h3>
+        </div>`;
+        return;
+    }
+
+    // Determine which columns to show in the table: ID + locked columns
+    const columnsToShow = [0]; // Always show ID (index 0)
+    locks.forEach((lock, index) => {
+        if (index > 0 && lock && lock.toString().toLowerCase().trim() === "locked") {
+            columnsToShow.push(index);
+        }
+    });
+
+    let tableHTML = `
+        <div style="overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%;">
+            <table class="admin-table" style="width: 100%; min-width: 800px; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                        ${columnsToShow.map(idx => `<th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc;">${headers[idx]}</th>`).join('')}
+                        <th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc;">Map PDF</th>
+                        <th style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; position: sticky; top: 0; background: #f8fafc;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    data.forEach((row, i) => {
+        let rowHTML = `<tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'">`;
+        
+        columnsToShow.forEach(idx => {
+            rowHTML += `<td style="padding: 12px 16px; color: #0f172a;">${formatDate(row[headers[idx]])}</td>`;
+        });
+
+        // Map PDF Column
+        let mapStatus = "";
+        if (row._mapLink) {
+            mapStatus = `<div style="font-size: 0.85rem; font-weight: 600; color: #0f172a; margin-bottom: 4px;">${row._mapName || 'Map'}</div>
+                         <a href="${row._mapLink}" target="_blank" class="btn-map" style="padding: 4px 10px; font-size: 0.8rem; border-radius: 6px;">🗺️ Open</a>`;
+        } else {
+            mapStatus = `<div style="font-size: 0.85rem; color: #ef4444; font-weight: 600;">❌ ${row._mapName || 'Missing'}</div>`;
+        }
+        
+        rowHTML += `<td style="padding: 12px 16px;">${mapStatus}</td>`;
+        
+        // Action Column
+        rowHTML += `<td style="padding: 12px 16px;">
+            <button class="btn-primary" onclick="openEditModal(${i})" style="padding: 6px 12px; font-size: 1.1rem; border-radius: 6px;" title="View & Edit Details">👁️</button>
+        </td>`;
+        
+        rowHTML += `</tr>`;
+        tableHTML += rowHTML;
+    });
+
+    tableHTML += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = tableHTML;
 }
 
 function renderTable() {
@@ -203,10 +277,11 @@ function openEditModal(i) {
         // Skip hidden/internal fields
         if (h.startsWith('_')) return "";
         
-        const isLocked = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
+        const isLocked = !isAdmin && locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
         const readOnlyAttr = isLocked ? "readonly" : "";
         const lockedStyle = isLocked ? "background: #f1f5f9; color: #64748b; cursor: not-allowed;" : "";
-        const lockIcon = isLocked ? " 🔒" : "";
+        const originalLock = locks[index] && locks[index].toString().toLowerCase().trim() === "locked";
+        const lockIcon = isLocked ? " 🔒" : (isAdmin && originalLock ? " 🔓 (Admin)" : "");
         
         // Format the value if it's a date
         const displayValue = formatDate(row[h]).toString().replace(/"/g, '&quot;');
@@ -247,7 +322,7 @@ document.getElementById('edit-form').onsubmit = async (e) => {
     try {
         const res = await fetch(WEB_APP_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: "save", data: updated, locks: locks, rowIndex: rowIndex })
+            body: JSON.stringify({ action: "save", data: updated, locks: locks, rowIndex: rowIndex, email: currentUserEmail })
         });
         const result = await res.json();
         
