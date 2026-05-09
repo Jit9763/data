@@ -7,7 +7,10 @@ let currentUserEmail = localStorage.getItem('census_email') || "";
 let currentEditIndex = -1;
 let isAdmin = false;
 let searchQuery = "";
+let sortField = "supervisor"; // Default sort
 let sortAsc = true;
+let currentPage = 1;
+const rowsPerPage = 10;
 let hiddenColumns = new Set();
 
 // Elements
@@ -204,13 +207,36 @@ function setupTableControls() {
 
         document.getElementById('search-input').oninput = (e) => {
             searchQuery = e.target.value.toLowerCase();
+            currentPage = 1;
             renderAdminTable();
         };
 
         document.getElementById('sort-hlb-btn').onclick = () => {
+            sortField = 'hlb';
             sortAsc = !sortAsc;
+            currentPage = 1;
             document.getElementById('sort-hlb-btn').textContent = sortAsc ? "Sort by HLB ↑" : "Sort by HLB ↓";
+            document.getElementById('sort-super-btn').textContent = "Sort by Supervisor ↕";
             renderAdminTable();
+        };
+
+        document.getElementById('sort-super-btn').onclick = () => {
+            sortField = 'supervisor';
+            sortAsc = !sortAsc;
+            currentPage = 1;
+            document.getElementById('sort-super-btn').textContent = sortAsc ? "Sort by Supervisor ↑" : "Sort by Supervisor ↓";
+            document.getElementById('sort-hlb-btn').textContent = "Sort by HLB ↕";
+            renderAdminTable();
+        };
+        
+        window.onscroll = () => {
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+                // If we scrolled near the bottom, increment page and re-render
+                if (data.length > 0 && (currentPage * rowsPerPage) < data.length) {
+                    currentPage++;
+                    renderAdminTable();
+                }
+            }
         };
 
         document.getElementById('report-maps-btn').onclick = () => {
@@ -256,6 +282,7 @@ function renderAdminTable() {
     let nameIdx = headers.findIndex(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('नाम'));
     let hlbIdx = headers.findIndex(h => h.toLowerCase().includes('hlb'));
     let mobileIdx = headers.findIndex(h => h.toLowerCase().includes('mobile') || h.toLowerCase().includes('मोबाइल'));
+    let superIdx = headers.findIndex(h => h.toLowerCase().includes('supervis') || h.toLowerCase().includes('सुपर'));
 
     let columnsToShow = [];
     columnsToShow.push(0); // ID
@@ -279,15 +306,28 @@ function renderAdminTable() {
         });
     }
 
-    if (hlbIdx !== -1) {
-        displayData.sort((a, b) => {
-            let matchA = (a[headers[hlbIdx]] || "0").toString().match(/\d+/);
-            let matchB = (b[headers[hlbIdx]] || "0").toString().match(/\d+/);
-            let valA = parseInt(matchA ? matchA[0] : "0", 10);
-            let valB = parseInt(matchB ? matchB[0] : "0", 10);
-            return sortAsc ? valA - valB : valB - valA;
-        });
-    }
+    displayData.sort((a, b) => {
+        let valA = 0, valB = 0;
+        
+        if (sortField === 'supervisor' && superIdx !== -1) {
+            valA = parseInt((a[headers[superIdx]] || "0").toString().match(/\d+/) || ["0"][0], 10);
+            valB = parseInt((b[headers[superIdx]] || "0").toString().match(/\d+/) || ["0"][0], 10);
+            
+            // Secondary sort by HLB if Supervisors match
+            if (valA === valB && hlbIdx !== -1) {
+                let hA = parseInt((a[headers[hlbIdx]] || "0").toString().match(/\d+/) || ["0"][0], 10);
+                let hB = parseInt((b[headers[hlbIdx]] || "0").toString().match(/\d+/) || ["0"][0], 10);
+                return hA - hB; // Secondary sort always ascending
+            }
+        } else if (hlbIdx !== -1) {
+            valA = parseInt((a[headers[hlbIdx]] || "0").toString().match(/\d+/) || ["0"][0], 10);
+            valB = parseInt((b[headers[hlbIdx]] || "0").toString().match(/\d+/) || ["0"][0], 10);
+        }
+        
+        return sortAsc ? valA - valB : valB - valA;
+    });
+
+    let paginatedData = displayData.slice(0, currentPage * rowsPerPage);
 
     let tableHTML = `
         <div style="overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%;">
@@ -302,7 +342,7 @@ function renderAdminTable() {
                 <tbody>
     `;
 
-    displayData.forEach((row, i) => {
+    paginatedData.forEach((row, i) => {
         let originalIndex = data.indexOf(row);
         let rowHTML = `<tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'">`;
         
