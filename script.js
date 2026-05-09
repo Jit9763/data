@@ -174,11 +174,17 @@ function setupTableControls() {
     const toggleContainer = document.getElementById('column-toggles');
     if (toggleContainer.innerHTML.trim() === "") {
         headers.forEach((h, idx) => {
-            if (idx === 0) return; // Keep ID always visible initially, but wait, let's allow toggling everything except Name and HLB? No, just allow everything.
-            if (h.toLowerCase().includes('name') || h.toLowerCase().includes('नाम') || h.toLowerCase().includes('hlb') || idx === 0) {
+            if (idx === 0) return;
+            let hLower = h.toLowerCase();
+            if (hLower.includes('name') || hLower.includes('नाम') || 
+                hLower.includes('hlb') || 
+                hLower.includes('supervis') || hLower.includes('circle') ||
+                hLower.includes('mobile') || hLower.includes('मोबाइल') ||
+                hLower.includes('email') || 
+                idx === 6 || idx === 11) {
                 // Default visible
             } else {
-                hiddenColumns.add(idx); // Hide others by default to keep it clean
+                hiddenColumns.add(idx); // Hide others by default
             }
         });
 
@@ -208,6 +214,33 @@ function setupTableControls() {
             sortAsc = !sortAsc;
             document.getElementById('sort-hlb-btn').textContent = sortAsc ? "Sort by HLB ↑" : "Sort by HLB ↓";
             renderAdminTable();
+        };
+
+        document.getElementById('report-maps-btn').onclick = () => {
+            let missingBlocks = [];
+            data.forEach(row => {
+                if (!row._mapLink) {
+                    let hlbIdx = headers.findIndex(h => h.toLowerCase().includes('hlb'));
+                    let blockNo = hlbIdx !== -1 ? row[headers[hlbIdx]] : "Unknown";
+                    // Avoid duplicates
+                    if (!missingBlocks.includes(blockNo)) missingBlocks.push(blockNo);
+                }
+            });
+            
+            missingBlocks.sort((a, b) => {
+                let valA = parseInt((a || "0").toString().match(/\d+/) || ["0"][0], 10);
+                let valB = parseInt((b || "0").toString().match(/\d+/) || ["0"][0], 10);
+                return valA - valB;
+            });
+
+            if (missingBlocks.length === 0) {
+                alert("✅ All maps are found in the folder!");
+            } else {
+                let msg = `❌ Missing Maps Total: ${missingBlocks.length}\n\n`;
+                msg += `The following Block numbers are missing their map PDFs in Google Drive:\n\n`;
+                msg += missingBlocks.join(", ");
+                alert(msg);
+            }
         };
     }
 }

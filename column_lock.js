@@ -82,6 +82,17 @@ function doGet(e) {
           var f = fuzzy.next();
           var fname = f.getName();
           
+          // STRICT FILTER: Ignore non-map files that contain the number
+          var lowerFname = fname.toLowerCase();
+          if (lowerFname.includes("enumerator") || 
+              lowerFname.includes("superviser") || 
+              lowerFname.includes("supervisor") || 
+              lowerFname.includes("appointment") || 
+              lowerFname.includes("letter") ||
+              lowerFname.includes("list")) {
+            continue; 
+          }
+          
           if (!isNaN(numInt)) {
             // Ensure the file name actually contains this EXACT number (e.g. 5, not 15)
             var fNums = fname.match(/\d+/g) || [];
