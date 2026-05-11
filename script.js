@@ -276,6 +276,54 @@ function setupTableControls() {
                 alert(msg);
             }
         };
+
+        const missingHlbBtn = document.getElementById('report-missing-hlb-btn');
+        if (missingHlbBtn) {
+            missingHlbBtn.onclick = () => {
+                let existingHlbs = new Set();
+                
+                // Prioritize finding "new hlb" or "hlb new", fallback to column H (index 7)
+                let hlbIdx = -1;
+                for (let i = 0; i < headers.length; i++) {
+                    let head = headers[i].toLowerCase().trim();
+                    if (head === "hlb new" || head === "new hlb") {
+                        hlbIdx = i;
+                        break;
+                    }
+                }
+                if (hlbIdx === -1 && headers.length > 7) {
+                    hlbIdx = 7; // Default to Column H
+                }
+                
+                if (hlbIdx !== -1) {
+                    data.forEach(row => {
+                        let hlbVal = row[headers[hlbIdx]];
+                        if (hlbVal) {
+                            let match = hlbVal.toString().match(/\d+/);
+                            if (match) {
+                                existingHlbs.add(parseInt(match[0], 10));
+                            }
+                        }
+                    });
+                }
+                
+                let missing = [];
+                for (let i = 1; i <= 242; i++) {
+                    if (!existingHlbs.has(i)) {
+                        missing.push(i);
+                    }
+                }
+                
+                if (missing.length === 0) {
+                    alert("✅ All HLBs from 1 to 242 are present in the portal!");
+                } else {
+                    let msg = `❌ Missing HLBs Total: ${missing.length}\n\n`;
+                    msg += `The following HLB numbers (from 1 to 242) are missing in the data:\n\n`;
+                    msg += missing.join(", ");
+                    alert(msg);
+                }
+            };
+        }
     }
 }
 
@@ -513,7 +561,7 @@ document.getElementById('edit-form').onsubmit = async (e) => {
     try {
         const res = await fetch(WEB_APP_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: "save", data: updated, locks: locks, rowIndex: rowIndex, email: currentUserEmail })
+            body: JSON.stringify({ action: "save", data: updated, oldData: rowData, locks: locks, rowIndex: rowIndex, email: currentUserEmail })
         });
         const result = await res.json();
         

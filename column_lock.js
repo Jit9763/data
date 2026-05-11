@@ -222,9 +222,13 @@ function doPost(e) {
 
     if (p.action === "save") {
       var mainSheet = ss.getSheetByName("DataEntry");
-      var backupSheet = ss.getSheetByName("Sheet2");
+      var backupSheet = ss.getSheetByName("BackupLog");
       
       if (!mainSheet) return response({status: "error", msg: "Main sheet 'DataEntry' not found"});
+      
+      if (!backupSheet) {
+        backupSheet = ss.insertSheet("BackupLog");
+      }
       
       var data = mainSheet.getDataRange().getValues();
       var headers = data[1]; // Headers are in Row 2
@@ -234,7 +238,37 @@ function doPost(e) {
       var rowIndex = p.rowIndex || -1;
       var emailToFind = (p.data[headers[0]] || "").toString().toLowerCase().trim();
       
-      if (rowIndex === -1 && emailToFind) {
+      // SAFELY IDENTIFY ROW USING OLD DATA TO PREVENT TABLE CORRUPTION
+      if (p.oldData && rowIndex !== -1 && rowIndex <= data.length) {
+          var currentRowData = data[rowIndex - 1]; // data is 0-indexed, rowIndex is 1-indexed
+          var oldEmail = (p.oldData[headers[0]] || "").toString().toLowerCase().trim();
+          var currentEmail = (currentRowData[0] || "").toString().toLowerCase().trim();
+          if (oldEmail !== currentEmail) {
+             rowIndex = -1; // Row index mismatch (rows were inserted/deleted), search again
+          }
+      }
+      
+      if (rowIndex === -1 && p.oldData) {
+          var oldEmail = (p.oldData[headers[0]] || "").toString().toLowerCase().trim();
+          var blockColIdx = -1;
+          for (var i = 0; i < headers.length; i++) {
+            var head = headers[i].toString().toLowerCase().trim();
+            if (head === "hlb new" || head === "new hlb") { blockColIdx = i; break; }
+            if (blockColIdx === -1 && (head.includes("ब्लॉक नम्बर") || head.includes("block no"))) { blockColIdx = i; }
+          }
+          if (blockColIdx === -1) blockColIdx = 7;
+          
+          var oldHlb = (p.oldData[headers[blockColIdx]] || "").toString().trim();
+          
+          for (var i = 2; i < data.length; i++) {
+             var rowEmail = (data[i][0] || "").toString().toLowerCase().trim();
+             var rowHlb = (data[i][blockColIdx] || "").toString().trim();
+             if (rowEmail === oldEmail && rowHlb === oldHlb) {
+                 rowIndex = i + 1;
+                 break;
+             }
+          }
+      } else if (rowIndex === -1 && emailToFind) {
         for (var i = 2; i < data.length; i++) {
           if (data[i][0] && data[i][0].toString().toLowerCase().trim() === emailToFind) {
             rowIndex = i + 1;
